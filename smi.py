@@ -4,49 +4,10 @@ import matplotlib.pyplot as plt
 
 
 class StockMarketIndicator:
-    def __init__(self, path_to_data):
-        dates_values, high, low = self.process_data(path_to_data)
-        self._stock_history = dict(dates_values)
+    def __init__(self, data: list[tuple[datetime, float, float, float]]):
+        date, close, high, low = zip(*data)
+        self._stock_history = dict(zip(date, close))
         self._macd, self._signal = self._calculate_macd(12, 26, 9)
-        self._williams_r = self._calculate_williams_r(high, low)
-
-    @staticmethod
-    def process_data(path) -> tuple[list[tuple[datetime, float]], list[float], list[float]]:
-        data = []
-        high = []
-        low = []
-        try:
-            with open(path, 'r') as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    try:
-                        date = datetime.strptime(row['Date'], '%Y-%m-%d')
-                        value = float(row['Close'])
-                        data.append((date, value))
-                        high.append(float(row['High']))
-                        low.append(float(row['Low']))
-                    except ValueError:
-                        print("Warning: Skipping row with invalid data:", row)
-
-                data.sort(key=lambda x: x[0])
-        except FileNotFoundError:
-            print(f"Error: File '{path}' not found")
-
-        return data, high, low
-
-    def _calculate_williams_r(self, high: list[float], low: list[float], n: int = 14) -> dict[datetime, float]:
-        if n <= 0 or n >= len(high):
-            raise ValueError("Invalid period length")
-
-        williams_r = dict()
-        for i in range(n, len(high)):
-            highest_high = max(high[i - n:i+1])
-            lowest_low = min(low[i - n:i+1])
-            close = self.values[i]
-            value = (highest_high - close) / (highest_high - lowest_low) * -100
-            williams_r[self.dates[i]] = value
-
-        return williams_r
 
     def _calculate_ema(self, n: int, values: list[float] = None) -> list[float]:
         if not values:
@@ -159,27 +120,7 @@ class StockMarketIndicator:
         buy_points, sell_points = self.get_intersection_points(dates, self.macd, self.signal, n)
         buy_dates, _ = zip(*buy_points)
         sell_dates, _ = zip(*sell_points)
-        # remove buy and sell actions that are not in Williams %R range
-        buy_dates = [date for date in buy_dates if self.williams_r[date] > -70]
-        sell_dates = [date for date in sell_dates if self.williams_r[date] < -30]
-
-        # remove redundant dates (buy - buy - buy - sell - sell - sell => buy - sell - buy - sell)
-        all_dates = sorted(buy_dates + sell_dates)
-        buy = []
-        sell = []
-        last_date = datetime.min
-        type = None
-        for date in all_dates:
-            if date in buy_dates and type in ['buy', None] and date > last_date:
-                buy.append(date)
-                last_date = date
-                type = 'buy' if type == 'sell' else 'sell'
-            elif date in sell_dates and type in ['sell', None] and date > last_date:
-                sell.append(date)
-                last_date = date
-                type = 'buy' if type == 'sell' else 'sell'
-
-        return buy, sell
+        return buy_dates, sell_dates
 
     def plot_benefit(self, time_units: int = None):
         plt.figure(figsize=(10, 6))
@@ -211,6 +152,9 @@ class StockMarketIndicator:
         print(f"Total: {cash + shares * self.stock_history[date]:.2f} $\n")
 
     def simulate_transactions(self, shares: int = 1, cash: float = 0, time_units: int = None):
+        if not time_units:
+            time_units = len(self.dates)
+
         self._print_state(shares, cash, self.dates[-time_units])
 
         self._print_state(shares, cash, self.dates[-1], title="State without any actions")
@@ -247,7 +191,3 @@ class StockMarketIndicator:
     @property
     def stock_history(self):
         return self._stock_history
-
-    @property
-    def williams_r(self):
-        return self._williams_r
