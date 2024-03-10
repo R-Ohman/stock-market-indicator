@@ -5,12 +5,16 @@ import matplotlib.pyplot as plt
 
 class StockMarketIndicator:
     def __init__(self, path_to_data):
-        self._stock_history = dict(self.process_data(path_to_data))
+        dates_values, high, low = self.process_data(path_to_data)
+        self._stock_history = dict(dates_values)
         self._macd, self._signal = self._calculate_macd(12, 26, 9)
+        self._williams_r = self._calculate_williams_r(high, low)
 
     @staticmethod
-    def process_data(path) -> list[tuple[datetime, float]]:
+    def process_data(path) -> tuple[list[tuple[datetime, float]], list[float], list[float]]:
         data = []
+        high = []
+        low = []
         try:
             with open(path, 'r') as file:
                 reader = csv.DictReader(file)
@@ -19,6 +23,8 @@ class StockMarketIndicator:
                         date = datetime.strptime(row['Date'], '%Y-%m-%d')
                         value = float(row['Close'])
                         data.append((date, value))
+                        high.append(float(row['High']))
+                        low.append(float(row['Low']))
                     except ValueError:
                         print("Warning: Skipping row with invalid data:", row)
 
@@ -26,7 +32,21 @@ class StockMarketIndicator:
         except FileNotFoundError:
             print(f"Error: File '{path}' not found")
 
-        return data
+        return data, high, low
+
+    def _calculate_williams_r(self, high: list[float], low: list[float], n: int = 14) -> dict[datetime, float]:
+        if n <= 0 or n >= len(high):
+            raise ValueError("Invalid period length")
+
+        williams_r = dict()
+        for i in range(n, len(high)):
+            highest_high = max(high[i - n:i+1])
+            lowest_low = min(low[i - n:i+1])
+            close = self.values[i]
+            value = (highest_high - close) / (highest_high - lowest_low) * -100
+            williams_r[self.dates[i]] = value
+
+        return williams_r
 
     def _calculate_ema(self, n: int, values: list[float] = None) -> list[float]:
         if not values:
@@ -46,8 +66,7 @@ class StockMarketIndicator:
 
         return ema_values
 
-    def _calculate_macd(self, short_period: int, long_period: int, signal_period: int) -> tuple[
-        list[float], list[float]]:
+    def _calculate_macd(self, short_period: int, long_period: int, signal_period: int) -> tuple[list[float], list[float]]:
         if short_period >= long_period:
             raise ValueError("Short period must be less than long period")
 
@@ -65,10 +84,13 @@ class StockMarketIndicator:
 
         return macd[-len(signal):], signal
 
-    def plot(self, x_label="Date", y_label="Close, $", title=None, time_units: int = None):
+    def plot(self, y=None, x_label="Date", y_label="Close, $", title=None, time_units: int = None):
         try:
             x = self.dates[-time_units:] if time_units else self.dates
-            y = self.values[-time_units:] if time_units else self.values
+            if y:
+                y = y[-time_units:] if time_units else y
+            else:
+                y = self.values[-time_units:] if time_units else self.values
 
             plt.xlabel(x_label)
             plt.ylabel(y_label)
@@ -137,11 +159,33 @@ class StockMarketIndicator:
         buy_points, sell_points = self.get_intersection_points(dates, self.macd, self.signal, n)
         buy_dates, _ = zip(*buy_points)
         sell_dates, _ = zip(*sell_points)
-        return buy_dates, sell_dates
+        # remove buy and sell actions that are not in Williams %R range
+        buy_dates = [date for date in buy_dates if self.williams_r[date] > -70]
+        sell_dates = [date for date in sell_dates if self.williams_r[date] < -30]
+
+        # remove redundant dates (buy - buy - buy - sell - sell - sell => buy - sell - buy - sell)
+        all_dates = sorted(buy_dates + sell_dates)
+        buy = []
+        sell = []
+        last_date = datetime.min
+        type = None
+        for date in all_dates:
+            if date in buy_dates and type in ['buy', None] and date > last_date:
+                buy.append(date)
+                last_date = date
+                type = 'buy' if type == 'sell' else 'sell'
+            elif date in sell_dates and type in ['sell', None] and date > last_date:
+                sell.append(date)
+                last_date = date
+                type = 'buy' if type == 'sell' else 'sell'
+
+        return buy, sell
 
     def plot_benefit(self, time_units: int = None):
         plt.figure(figsize=(10, 6))
         buy_dates, sell_dates = self.__get_buy_and_sell_dates(time_units)
+        if sell_dates[0] < buy_dates[0]:
+            sell_dates = sell_dates[1:]
 
         # diagram of buy and sell actions
         for buy_date, sell_date in zip(buy_dates, sell_dates):
@@ -203,3 +247,7 @@ class StockMarketIndicator:
     @property
     def stock_history(self):
         return self._stock_history
+
+    @property
+    def williams_r(self):
+        return self._williams_r
