@@ -1,4 +1,3 @@
-import csv
 from datetime import datetime
 import matplotlib.pyplot as plt
 
@@ -8,6 +7,7 @@ class StockMarketIndicator:
         date, close, high, low = zip(*data)
         self._stock_history = dict(zip(date, close))
         self._macd, self._signal = self._calculate_macd(12, 26, 9)
+        self._williams_r = self._calculate_williams_r(high, low)
 
     def _calculate_ema(self, n: int, values: list[float] = None) -> list[float]:
         if not values:
@@ -26,6 +26,20 @@ class StockMarketIndicator:
             ema_values.append(ema)
 
         return ema_values
+
+    def _calculate_williams_r(self, high: list[float], low: list[float], n: int = 14) -> dict[datetime, float]:
+        if n <= 0 or n >= len(high):
+            raise ValueError("Invalid period length")
+
+        williams_r = dict()
+        for i in range(n, len(high)):
+            highest_high = max(high[i - n:i + 1])
+            lowest_low = min(low[i - n:i + 1])
+            close = self.values[i]
+            value = (highest_high - close) / (highest_high - lowest_low) * -100
+            williams_r[self.dates[i]] = value
+
+        return williams_r
 
     def _calculate_macd(self, short_period: int, long_period: int, signal_period: int) -> tuple[list[float], list[float]]:
         if short_period >= long_period:
@@ -64,15 +78,16 @@ class StockMarketIndicator:
             print(f"Error: Data length is less than {time_units}")
 
     @staticmethod
-    def get_intersection_points(x, y1, y2, time_units: int = None) -> tuple[list[tuple[datetime, float]], list[tuple[datetime, float]]]:
+    def get_intersection_points(x, y1, y2, time_units: int = None)\
+            -> tuple[list[tuple[datetime, float]], list[tuple[datetime, float]]]:
         # intersection points are found between the last 'n' elements
         time_units = time_units if time_units else len(y1)
         x = x[-len(y1):]
         asc = []
         desc = []
-        for i in range(len(y1) - time_units, len(y1) - 1):
-            above_before = y1[i] > y2[i]
-            above_after = y1[i + 1] > y2[i + 1]
+        for i in range(len(y1) - time_units + 1, len(y1)):
+            above_before = y1[i - 1] > y2[i - 1]
+            above_after = y1[i] > y2[i]
             if above_before and not above_after:
                 desc.append((x[i], y1[i]))
             elif not above_before and above_after:
@@ -114,13 +129,34 @@ class StockMarketIndicator:
     def plot_macd(self, time_units: int = None, title="MACD"):
         self._double_plot_with_intersections(self.macd, self.signal, time_units, title=title)
 
-    def __get_buy_and_sell_dates(self, n:int = None):
+    def __get_buy_and_sell_dates(self, n: int = None):
         n = n if n else min(len(self.macd), len(self.signal))
         dates = self.dates[-len(self.macd):]
         buy_points, sell_points = self.get_intersection_points(dates, self.macd, self.signal, n)
         buy_dates, _ = zip(*buy_points)
         sell_dates, _ = zip(*sell_points)
-        return buy_dates, sell_dates
+        #return buy_dates, sell_dates
+        # remove buy and sell actions that are not in Williams %R range
+        buy_dates = [date for date in buy_dates if self.williams_r[date] > -70]
+        sell_dates = [date for date in sell_dates if self.williams_r[date] < -30]
+
+        # remove redundant dates (buy - buy - buy - sell - sell - sell => buy - sell - buy - sell)
+        all_dates = sorted(buy_dates + sell_dates)
+        buy = []
+        sell = []
+        last_date = datetime.min
+        type = None
+        for date in all_dates:
+            if date in buy_dates and type in ['buy', None] and date > last_date:
+                buy.append(date)
+                last_date = date
+                type = 'buy' if type == 'sell' else 'sell'
+            elif date in sell_dates and type in ['sell', None] and date > last_date:
+                sell.append(date)
+                last_date = date
+                type = 'buy' if type == 'sell' else 'sell'
+
+        return buy, sell
 
     def plot_benefit(self, time_units: int = None):
         plt.figure(figsize=(10, 6))
@@ -191,3 +227,7 @@ class StockMarketIndicator:
     @property
     def stock_history(self):
         return self._stock_history
+
+    @property
+    def williams_r(self):
+        return self._williams_r

@@ -27,7 +27,8 @@ def process_file(path, points_number=1000) -> list[tuple[datetime, float, float,
     return data[-points_number:]
 
 
-def process_symbol(symbol: str, time_series: str, interval: int = 60, points_number=1000) -> list[tuple[datetime, float, float, float]]:
+def process_symbol(symbol: str, time_series: str, interval: int = 60, points_number=1000)\
+        -> list[tuple[datetime, float, float, float]]:
     try:
         url = f'https://www.alphavantage.co/query?function=TIME_SERIES_{time_series}&symbol={symbol}&apikey={ALPHAVANTAGE_API_KEY}&outputsize=full'
         if interval:
@@ -44,11 +45,11 @@ def process_symbol(symbol: str, time_series: str, interval: int = 60, points_num
         if time_series == 'intraday':
             data_title = f'Time Series ({interval}min)'
         elif time_series == 'daily':
-            data_title = f'Time Series (Daily)'
+            data_title = 'Time Series (Daily)'
         elif time_series == 'weekly':
-            data_title = f'Weekly Time Series'
-        elif time_series == 'monthly':
-            data_title = f'Monthly Time Series'
+            data_title = 'Weekly Time Series'
+        else:
+            data_title = 'Monthly Time Series'
 
         for date in list(stock[data_title].keys())[:points_number]:
             close = float(stock[data_title][date]['4. close'])
@@ -119,7 +120,7 @@ def main():
     data = user_interface()
     smi = StockMarketIndicator(data)
     smi.plot(title='Historical Stock Data')
-    smi.plot_macd(title=f"MACD")
+    smi.plot_macd(title='MACD')
     smi.plot_benefit()
 
     print("\nSimulation:\n")
