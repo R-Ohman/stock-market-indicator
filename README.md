@@ -42,10 +42,15 @@ python main.py
 
 Follow the instructions on the command line to interact with the application. You can choose to use a file containing historical stock data or specify a symbol or company name to fetch data online.
 
+## Example
+![image](https://github.com/R-Ohman/stock-market-indicator/assets/113181317/1582e775-8a62-41f5-94ab-18146a7cf740)
+
+
+
 ## Contributing
 
 Contributions are welcome! If you have any suggestions, bug fixes, or new features to add, feel free to open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.

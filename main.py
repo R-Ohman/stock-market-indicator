@@ -117,24 +117,24 @@ def user_interface():
 
 
 def main():
-    data = user_interface()
-    smi = StockMarketIndicator(data)
-    smi.plot(title='Historical Stock Data')
-    smi.plot_macd(title='MACD')
-    smi.plot_benefit()
-
-    print("\nSimulation:\n")
-    shares = int(input("Enter the number of shares: "))
-    cash = float(input("Enter the amount of cash: "))
-    smi.simulate_transactions(shares=shares, cash=cash)
-
-    # N = 100
-    # data = process_file('data/apple.csv', points_number=N)
+    # data = user_interface()
     # smi = StockMarketIndicator(data)
-    # smi.plot(title="Apple", time_units=N)
-    # smi.plot_macd(time_units=N, title="Apple MACD")
-    # smi.plot_benefit(time_units=N)
-    # smi.simulate_transactions(shares=10, cash=0, time_units=N)
+    # smi.plot(title='Historical Stock Data')
+    # smi.plot_macd(title='MACD')
+    # smi.plot_benefit()
+    #
+    # print("\nSimulation:\n")
+    # shares = int(input("Enter the number of shares: "))
+    # cash = float(input("Enter the amount of cash: "))
+    # smi.simulate_transactions(shares=shares, cash=cash)
+
+    N = 1000
+    data = process_file('data/eurpln_w.csv', points_number=N)
+    smi = StockMarketIndicator(data)
+    smi.plot(title="Apple")
+    smi.plot_macd(title="Apple MACD")
+    smi.plot_benefit()
+    smi.simulate_transactions(shares=1000, cash=0)
 
 
 if __name__ == '__main__':

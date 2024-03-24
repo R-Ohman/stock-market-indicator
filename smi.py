@@ -1,5 +1,6 @@
 from datetime import datetime
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class StockMarketIndicator:
@@ -16,14 +17,17 @@ class StockMarketIndicator:
         if n <= 0 or n >= len(values):
             raise ValueError("Invalid period length")
 
-        # initialize EMA with SMA of first 'n' values
-        ema = sum(values[:n]) / n
-        ema_values = [ema]
+        # Initialize EMA with SMA of first 'n' values
+        ema_values = [sum(values[:n]) / n]
         alpha = 2 / (n + 1)
 
         for i in range(n, len(values)):
-            ema += (values[i] - ema) * alpha
-            ema_values.append(ema)
+            nominator = 0
+            denominator = 0
+            for j in range(n):
+                nominator += (1 - alpha) ** j * values[i - j]
+                denominator += (1 - alpha) ** j
+            ema_values.append(nominator / denominator)
 
         return ema_values
 
@@ -48,15 +52,15 @@ class StockMarketIndicator:
         short_ema = self._calculate_ema(short_period)
         long_ema = self._calculate_ema(long_period)
 
-        # ensure lengths of short_ema and long_ema are the same
+        # Align EMA values, keeping only the last 'min_length' elements
         min_length = min(len(short_ema), len(long_ema))
-        # keep only the last min_length elements
         short_ema = short_ema[-min_length:]
         long_ema = long_ema[-min_length:]
 
         macd = [short_ema[i] - long_ema[i] for i in range(min_length)]
         signal = self._calculate_ema(signal_period, values=macd)
 
+        # Align size of MACD
         return macd[-len(signal):], signal
 
     def plot(self, y=None, x_label="Date", y_label="Close, $", title=None, time_units: int = None):
@@ -135,7 +139,7 @@ class StockMarketIndicator:
         buy_points, sell_points = self.get_intersection_points(dates, self.macd, self.signal, n)
         buy_dates, _ = zip(*buy_points)
         sell_dates, _ = zip(*sell_points)
-        #return buy_dates, sell_dates
+
         # remove buy and sell actions that are not in Williams %R range
         buy_dates = [date for date in buy_dates if self.williams_r[date] > -70]
         sell_dates = [date for date in sell_dates if self.williams_r[date] < -30]
@@ -164,19 +168,24 @@ class StockMarketIndicator:
         if sell_dates[0] < buy_dates[0]:
             sell_dates = sell_dates[1:]
 
-        # diagram of buy and sell actions
-        for buy_date, sell_date in zip(buy_dates, sell_dates):
+        _, ax = plt.subplots(figsize=(10, 6))
+
+        # Diagram of buy and sell actions
+        for i, (buy_date, sell_date) in enumerate(zip(buy_dates, sell_dates)):
             buy_price = self.stock_history[buy_date]
             sell_price = self.stock_history[sell_date]
 
             color = 'g' if sell_price > buy_price else 'r'
-            width = sell_date - buy_date
-            plt.bar(x=buy_date + width / 2, height=sell_price - buy_price, width=width, color=color, alpha=0.5)
+            ax.bar(x=i, height=sell_price - buy_price, color=color, alpha=0.6)
+
+        # Set X-axis ticks to be the buy_dates
+        ax.set_xticks(np.arange(len(buy_dates)))
+        ax.set_xticklabels([date.strftime('%Y-%m-%d') for date in buy_dates], rotation=60, ha='right')
+        #ax.set_yscale('symlog', base=2, linthresh=0.01)
 
         plt.xlabel('Date')
-        plt.ylabel('Benefit, $')
+        plt.ylabel('Benefit from one share, $')
         plt.title('Benefits with Buy and Sell Actions')
-        plt.xticks(rotation=45)
         plt.tight_layout()
         plt.show()
 
