@@ -1,12 +1,16 @@
 import csv
 from datetime import datetime
 
+from matplotlib.pyplot import savefig
+
 from smi import StockMarketIndicator
 import requests
 from config import ALPHAVANTAGE_API_KEY, YFINANCE_API_KEY
 
 
-def process_file(path, points_number=1000) -> list[tuple[datetime, float, float, float]]:
+def process_file(path, points_number=1000,
+                 fromDate = datetime.min,
+                 toDate = datetime.max)  -> list[tuple[datetime, float, float, float]]:
     data = []
     try:
         with open(path, 'r') as file:
@@ -14,6 +18,9 @@ def process_file(path, points_number=1000) -> list[tuple[datetime, float, float,
             for row in reader:
                 try:
                     date = datetime.strptime(row['Date'], '%Y-%m-%d')
+                    if date < fromDate or date > toDate:
+                        continue
+
                     close = float(row['Close'])
                     high = float(row['High'])
                     low = float(row['Low'])
@@ -129,10 +136,12 @@ def main():
     # smi.simulate_transactions(shares=shares, cash=cash)
 
     N = 1000
-    data = process_file('data/eurpln_w.csv', points_number=N)
+    data = process_file('data/apple_d.csv', points_number=N)
     smi = StockMarketIndicator(data)
-    smi.plot(title="Apple")
-    smi.plot_macd(title="Apple MACD")
+    smi.plot(title="Apple Inc.")
+    smi.plot_macd(title="Apple Inc. MACD")
+    smi.plot_williams(title="Apple Inc. Williams %R")
+    smi.plot_with_buy_and_sell()
     smi.plot_benefit()
     smi.simulate_transactions(shares=1000, cash=0)
 
