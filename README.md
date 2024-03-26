@@ -43,8 +43,14 @@ python main.py
 Follow the instructions on the command line to interact with the application. You can choose to use a file containing historical stock data or specify a symbol or company name to fetch data online.
 
 ## Example
-![image](https://github.com/R-Ohman/stock-market-indicator/assets/113181317/1582e775-8a62-41f5-94ab-18146a7cf740)
 
+<div align="center">
+  <img src="https://github.com/R-Ohman/stock-market-indicator/assets/113181317/424b4861-195c-41a0-b398-0da538ddbf13" style="width: 75%;">
+  <img src="https://github.com/R-Ohman/stock-market-indicator/assets/113181317/91009901-9e57-4a97-86be-e94d6ba20aff" style="width: 49%;">
+  <img src="https://github.com/R-Ohman/stock-market-indicator/assets/113181317/e3d18ecd-b696-4117-9018-c745cc3e71e5" style="width: 49%;">
+  <img src="https://github.com/R-Ohman/stock-market-indicator/assets/113181317/273a17b7-512b-4f29-9547-276e26052fd6" style="width: 49%;">
+  <img src="https://github.com/R-Ohman/stock-market-indicator/assets/113181317/a45d8a32-057f-4dd2-9746-7b0c222180f7" style="width: 49%;">
+</div>
 
 
 ## Contributing
