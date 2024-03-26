@@ -1,16 +1,15 @@
 import csv
 from datetime import datetime
 
-from matplotlib.pyplot import savefig
-
+from PlotManager import PlotManager
 from smi import StockMarketIndicator
 import requests
 from config import ALPHAVANTAGE_API_KEY, YFINANCE_API_KEY
 
 
 def process_file(path, points_number=1000,
-                 fromDate = datetime.min,
-                 toDate = datetime.max)  -> list[tuple[datetime, float, float, float]]:
+                 from_date=datetime.min,
+                 to_date=datetime.max) -> list[tuple[datetime, float, float, float]]:
     data = []
     try:
         with open(path, 'r') as file:
@@ -18,7 +17,7 @@ def process_file(path, points_number=1000,
             for row in reader:
                 try:
                     date = datetime.strptime(row['Date'], '%Y-%m-%d')
-                    if date < fromDate or date > toDate:
+                    if date < from_date or date > to_date:
                         continue
 
                     close = float(row['Close'])
@@ -37,7 +36,8 @@ def process_file(path, points_number=1000,
 def process_symbol(symbol: str, time_series: str, interval: int = 60, points_number=1000)\
         -> list[tuple[datetime, float, float, float]]:
     try:
-        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_{time_series}&symbol={symbol}&apikey={ALPHAVANTAGE_API_KEY}&outputsize=full'
+        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_{time_series}' + \
+                f'&symbol={symbol}&apikey={ALPHAVANTAGE_API_KEY}&outputsize=full'
         if interval:
             url += f'&interval={interval}min'
 
@@ -75,7 +75,7 @@ def process_symbol(symbol: str, time_series: str, interval: int = 60, points_num
     return data
 
 
-def get_symbol(search_term):
+def get_symbol(search_term: str) -> str:
     try:
         url = f'https://yfapi.net/v6/finance/autocomplete?region=IN&lang=en&query={search_term}'
         headers = {
@@ -92,8 +92,7 @@ def get_symbol(search_term):
         return None
 
 
-def user_interface():
-    print("Welcome to Stock Market Indicator")
+def ui_get_data() -> list[tuple[datetime, float, float, float]]:
     print("1. Use a file")
     print("2. Use a symbol or company name")
     choice = input("Enter your choice: ")
@@ -123,27 +122,39 @@ def user_interface():
     return process_symbol(symbol=symbol, time_series=time_series, interval=interval, points_number=points_number)
 
 
-def main():
-    # data = user_interface()
-    # smi = StockMarketIndicator(data)
-    # smi.plot(title='Historical Stock Data')
-    # smi.plot_macd(title='MACD')
-    # smi.plot_benefit()
-    #
-    # print("\nSimulation:\n")
-    # shares = int(input("Enter the number of shares: "))
-    # cash = float(input("Enter the amount of cash: "))
-    # smi.simulate_transactions(shares=shares, cash=cash)
-
-    N = 1000
-    data = process_file('data/apple_d.csv', points_number=N)
+def user_interface():
+    print("Welcome to Stock Market Indicator")
+    data = ui_get_data()
     smi = StockMarketIndicator(data)
-    smi.plot(title="Apple Inc.")
-    smi.plot_macd(title="Apple Inc. MACD")
-    smi.plot_williams(title="Apple Inc. Williams %R")
-    smi.plot_with_buy_and_sell()
-    smi.plot_benefit()
-    smi.simulate_transactions(shares=1000, cash=0)
+
+    pm = PlotManager(smi)
+    pm.plot(title='Historical Stock Data')
+    pm.plot_macd(title='MACD')
+    pm.plot_williams(title='Williams %R')
+    pm.plot_with_buy_and_sell()
+    pm.plot_benefit()
+
+    print("\nSimulation:\n")
+    shares = int(input("Enter the number of shares: "))
+    cash = float(input("Enter the amount of cash: "))
+    smi.simulate_transactions(shares=shares, cash=cash)
+
+
+def main():
+    user_interface()
+
+    # notations_number = 1000
+    # instrument_name = 'Apple Inc.'
+    # data = process_file('data/apple_d.csv', points_number=notations_number)
+    # smi = StockMarketIndicator(data)
+    # smi.simulate_transactions(shares=1000, cash=0, csv_file=f"simulation/{instrument_name}.csv")
+    #
+    # pm = PlotManager(smi)
+    # pm.plot(title=instrument_name)
+    # pm.plot_macd(title=f"{instrument_name} MACD")
+    # pm.plot_williams(title=f"{instrument_name} Williams %R")
+    # pm.plot_with_buy_and_sell()
+    # pm.plot_benefit()
 
 
 if __name__ == '__main__':
